@@ -31,6 +31,18 @@ SOFTWARE.
 #include <vector>
 #include <array>
 
+#ifndef IMCOOLBAR_HAS_DOCKING
+#if defined(IMGUI_HAS_DOCK)
+#define IMCOOLBAR_HAS_DOCKING
+#endif
+#endif
+
+#ifdef IMCOOLBAR_HAS_DOCKING
+#define ICB_DOCKING_HOST_FLAGS (ImGuiWindowFlags_DockNodeHost | ImGuiWindowFlags_NoDocking)
+#else
+#define ICB_DOCKING_HOST_FLAGS 0
+#endif
+
 #define ICB_PREFIX "ICB"
 //#define ENABLE_IMCOOLBAR_DEBUG
 
@@ -92,8 +104,7 @@ IMGUI_API bool ImGui::BeginCoolBar(const char* vLabel, ImCoolBarFlags vCBFlags, 
         ImGuiWindowFlags_NoBackground |        //
 #endif                                         //
         ImGuiWindowFlags_NoFocusOnAppearing |  //
-        ImGuiWindowFlags_DockNodeHost |        //
-        ImGuiWindowFlags_NoDocking;            //
+        ICB_DOCKING_HOST_FLAGS;                //
     bool res = ImGui::Begin(vLabel, nullptr, flags);
     if (!res) {
         ImGui::End();

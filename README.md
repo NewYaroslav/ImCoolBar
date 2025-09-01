@@ -4,6 +4,12 @@
 
 # ImCoolbar
 
+## Docking support
+
+Works with Dear ImGui 1.92 on both the docking and non-docking branches. Docking
+window flags are enabled automatically when `IMGUI_HAS_DOCK` is defined, or by
+defining `IMCOOLBAR_HAS_DOCKING` before including `ImCoolBar.h`.
+
 # Minimal Sample
 
 ```cpp
