@@ -4,6 +4,8 @@
 
 # ImCoolbar
 
+This repository is a fork of the original [aiekick/ImCoolBar](https://github.com/aiekick/ImCoolBar).
+
 ## Docking support
 
 Works with Dear ImGui 1.92 on both the docking and non-docking branches. Docking
