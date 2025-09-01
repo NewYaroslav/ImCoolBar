@@ -26,6 +26,10 @@ SOFTWARE.
 
 #include "imgui.h"
 
+#if !defined(IMCOOLBAR_HAS_DOCKING) && defined(IMGUI_HAS_DOCK)
+#define IMCOOLBAR_HAS_DOCKING
+#endif
+
 typedef int ImCoolBarFlags;                //
 enum ImCoolBarFlags_ {                     //
     ImCoolBarFlags_None       = 0,         //
