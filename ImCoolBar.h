@@ -37,29 +37,33 @@ enum ImCoolBarFlags_ {                     //
     ImCoolBarFlags_Horizontal = (1 << 1),  //
 };
 
-namespace ImGui {
-
 struct ImCoolBarConfig {
     ImVec2 anchor         = ImVec2(-1.0f, -1.0f);             //
     float normal_size     = 40.0f;                            //
     float hovered_size    = 60.0f;                            //
     float anim_step       = 0.15f;                            //
     float effect_strength = 0.5f;                             //
+    float mouse_ema_half_life_ms  = 0.0f;                     // <=0 disables time-based EMA
     ImCoolBarConfig(                                          //
         const ImVec2 vAnchor         = ImVec2(-1.0f, -1.0f),  //
-        const float& vNormalSize     = 40.0f,                 //
-        const float& vHoveredSize    = 60.0f,                 //
-        const float& vAnimStep       = 0.15f,                 //
-        const float& vEffectStrength = 0.5f)                  //
+        const float  vNormalSize     = 40.0f,                 //
+        const float  vHoveredSize    = 60.0f,                 //
+        const float  vAnimStep       = 0.15f,                 //
+        const float  vEffectStrength = 0.5f,                  //
+        const float  vMouseEmaHalfLifeMs = 0.0f)              //
         :                                                     //
           anchor(vAnchor),                                    //
           normal_size(vNormalSize),                           //
           hovered_size(vHoveredSize),                         //
           anim_step(vAnimStep),                               //
-          effect_strength(vEffectStrength)                    //
+          effect_strength(vEffectStrength),                   //
+          mouse_ema_half_life_ms(vMouseEmaHalfLifeMs)         //
     {
     }
 };
+
+namespace ImGui {
+
 IMGUI_API bool BeginCoolBar(const char* vLabel, ImCoolBarFlags vCBFlags = ImCoolBarFlags_Vertical, const ImCoolBarConfig& vConfig = {}, ImGuiWindowFlags vFlags = ImGuiWindowFlags_None);
 IMGUI_API void EndCoolBar();
 IMGUI_API bool CoolBarItem();

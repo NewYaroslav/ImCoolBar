@@ -58,37 +58,57 @@ SOFTWARE.
 #define BREAK_ON_KEY(KEY)         \
     if (ImGui::IsKeyPressed(KEY)) \
     ICB_DEBUG_BREAK
+    
+namespace {
 
-static float bubbleEffect(const float vValue, const float vStength) {
-    return pow(cos(vValue * IM_PI * vStength), 12.0f);
-}
-
-// https://codesandbox.io/s/motion-dock-forked-hs4p8d?file=/src/Dock.tsx
-static float getHoverSize(const float vValue, const float vNormalSize, const float vHoveredSize, const float vStength, const float vScale) {
-    return ImClamp(vNormalSize + (vHoveredSize - vNormalSize) * bubbleEffect(vValue, vStength) * vScale, vNormalSize, vHoveredSize);
-}
-
-static bool isWindowHovered(ImGuiWindow* vWindow) {
-    return ImGui::IsMouseHoveringRect(vWindow->Rect().Min, vWindow->Rect().Max);
-}
-
-static float getBarSize(const float vNormalSize, const float vHoveredSize, const float vScale) {
-    return vNormalSize + (vHoveredSize - vNormalSize) * vScale;
-}
-
-static float getChannel(const ImVec2& vVec, const ImCoolBarFlags vCBFlags) {
-    if (vCBFlags & ImCoolBarFlags_Horizontal) {
-        return vVec.x;
+    static float bubbleEffect(const float vValue, const float vStength) {
+        return pow(cos(vValue * IM_PI * vStength), 12.0f);
     }
-    return vVec.y;
-}
 
-static float getChannelInv(const ImVec2& vVec, const ImCoolBarFlags vCBFlags) {
-    if (vCBFlags & ImCoolBarFlags_Horizontal) {
+    // https://codesandbox.io/s/motion-dock-forked-hs4p8d?file=/src/Dock.tsx
+    static float getHoverSize(const float vValue, const float vNormalSize, const float vHoveredSize, const float vStength, const float vScale) {
+        return ImClamp(vNormalSize + (vHoveredSize - vNormalSize) * bubbleEffect(vValue, vStength) * vScale, vNormalSize, vHoveredSize);
+    }
+
+    static bool isWindowHovered(ImGuiWindow* vWindow) {
+        return ImGui::IsMouseHoveringRect(vWindow->Rect().Min, vWindow->Rect().Max);
+    }
+
+    static float getBarSize(const float vNormalSize, const float vHoveredSize, const float vScale) {
+        return vNormalSize + (vHoveredSize - vNormalSize) * vScale;
+    }
+
+    static float getChannel(const ImVec2& vVec, const ImCoolBarFlags vCBFlags) {
+        if (vCBFlags & ImCoolBarFlags_Horizontal) {
+            return vVec.x;
+        }
         return vVec.y;
     }
-    return vVec.x;
-}
+
+    static float getChannelInv(const ImVec2& vVec, const ImCoolBarFlags vCBFlags) {
+        if (vCBFlags & ImCoolBarFlags_Horizontal) {
+            return vVec.y;
+        }
+        return vVec.x;
+    }
+
+    static void emaReset(ImGuiID id, float value) {
+        ImGui::GetStateStorage()->SetFloat(id, value);
+    }
+
+    static float emaUpdate(ImGuiID id, float sample, float alpha) {
+        ImGuiStorage* st = ImGui::GetStateStorage();
+        float current = st->GetFloat(id, sample);
+        current += alpha * (sample - current);
+        st->SetFloat(id, current);
+        return current;
+    }
+
+    //static float emaValue(ImGuiID id, float default_value) {
+    //    return ImGui::GetStateStorage()->GetFloat(id, default_value);
+    //}
+
+}; // namespace
 
 IMGUI_API bool ImGui::BeginCoolBar(const char* vLabel, ImCoolBarFlags vCBFlags, const ImCoolBarConfig& vConfig, ImGuiWindowFlags vFlags) {
     ImGuiWindowFlags flags =                   //
@@ -132,7 +152,8 @@ IMGUI_API bool ImGui::BeginCoolBar(const char* vLabel, ImCoolBarFlags vCBFlags, 
 
         const auto anim_scale_id = window_ptr->GetID(ICB_PREFIX "AnimScale");
         float anim_scale = window_ptr->StateStorage.GetFloat(anim_scale_id);
-        if (isWindowHovered(window_ptr)) {
+        const bool hovered_now = isWindowHovered(window_ptr);
+        if (hovered_now) {
             if (anim_scale < 1.0f) {
                 anim_scale += vConfig.anim_step;
             }
@@ -144,6 +165,29 @@ IMGUI_API bool ImGui::BeginCoolBar(const char* vLabel, ImCoolBarFlags vCBFlags, 
 
         anim_scale = ImClamp(anim_scale, 0.0f, 1.0f);
         window_ptr->StateStorage.SetFloat(anim_scale_id, anim_scale);
+        
+         // --- Time-based EMA setup for mouse ------------------------------------
+        {
+            const ImGuiID ema_hl_id   = window_ptr->GetID(ICB_PREFIX "MouseEmaHalfLifeMs");
+            const ImGuiID ema_alpha_id= window_ptr->GetID(ICB_PREFIX "MouseEmaAlpha");
+            const ImGuiID ema_init_id = window_ptr->GetID(ICB_PREFIX "MouseEmaInit");
+
+            window_ptr->StateStorage.SetFloat(ema_hl_id, vConfig.mouse_ema_half_life_ms);
+
+            float alpha = 1.0f; // disabled by default -> pass-through
+            if (vConfig.mouse_ema_half_life_ms > 0.0f) {
+                // alpha = 1 - exp(-ln(2) * dt / HL)
+                const float dt_ms = ImGui::GetIO().DeltaTime * 1000.0f;
+                const float k     = 0.69314718056f; // ln(2)
+                alpha = 1.0f - expf(-k * (dt_ms / vConfig.mouse_ema_half_life_ms));
+                alpha = ImClamp(alpha, 0.0f, 1.0f);
+            }
+            window_ptr->StateStorage.SetFloat(ema_alpha_id, alpha);
+
+            // Drop EMA seed when cursor leaves -> no stale lag on next enter
+            if (!hovered_now)
+                window_ptr->StateStorage.SetBool(ema_init_id, false);
+        }
         
         // --- Position with predicted cross-axis size for THIS frame ---
         ImVec2 pad = ImGui::GetStyle().WindowPadding * 2.0f;
@@ -199,7 +243,23 @@ IMGUI_API bool ImGui::CoolBarItem() {
     ImGuiContext& g = *GImGui;
 
     if (isWindowHovered(window_ptr)) {
-        last_mouse_pos = getChannel(ImGui::GetMousePos(), flags);
+        float m = getChannel(ImGui::GetMousePos(), flags);
+
+        // Apply time-based EMA if enabled this frame
+        const float alpha     = window_ptr->StateStorage.GetFloat(window_ptr->GetID(ICB_PREFIX "MouseEmaAlpha"));
+        const float hl_ms     = window_ptr->StateStorage.GetFloat(window_ptr->GetID(ICB_PREFIX "MouseEmaHalfLifeMs"));
+        if (hl_ms > 0.0f && alpha > 0.0f) {
+            const ImGuiID ema_id      = window_ptr->GetID(ICB_PREFIX "MouseEma");
+            const ImGuiID ema_init_id = window_ptr->GetID(ICB_PREFIX "MouseEmaInit");
+            // First hover frame: seed EMA with current mouse to avoid jump/lag
+            if (!window_ptr->StateStorage.GetBool(ema_init_id)) {
+                emaReset(ema_id, m);
+                window_ptr->StateStorage.SetBool(ema_init_id, true);
+            } else {
+                m = emaUpdate(ema_id, m, alpha); // alpha is per-frame
+            }
+        }
+        last_mouse_pos = m;
     }
     
     if (current_item_size <= 0.0f) current_item_size = normal_size;
@@ -269,6 +329,8 @@ IMGUI_API void ImGui::ShowCoolBarMetrics(bool* vOpened) {
                 const auto effect_strength_id = window_ptr->GetID(ICB_PREFIX "EffectStrength");
                 const auto item_current_size_id = window_ptr->GetID(ICB_PREFIX "ItemCurrentSize");
                 const auto item_current_scale_id = window_ptr->GetID(ICB_PREFIX "ItemCurrentScale");
+                const auto ema_hl_id   = window_ptr->GetID(ICB_PREFIX "MouseEmaHalfLifeMs");
+                const auto ema_alpha_id  = window_ptr->GetID(ICB_PREFIX "MouseEmaAlpha");
 
                 const auto flags = window_ptr->StateStorage.GetInt(flags_id);
                 const auto anchor = window_ptr->StateStorage.GetFloat(anchor_id);
@@ -301,6 +363,8 @@ IMGUI_API void ImGui::ShowCoolBarMetrics(bool* vOpened) {
                     SetColumnLabel("EffectStrength ", "%f", effect_strength);
                     SetColumnLabel("ItemCurrentSize ", "%f", item_current_size);
                     SetColumnLabel("ItemCurrentScale ", "%f", item_current_scale);
+                    SetColumnLabel("MouseEmaHalfLifeMs  ", "%f", window_ptr->StateStorage.GetInt(ema_hl_id));
+                    SetColumnLabel("MouseEmaAlpha ", "%f", window_ptr->StateStorage.GetFloat(ema_alpha_id)); 
 
                     ImGui::TableNextColumn();
                     ImGui::Text("%s", "Flags ");
