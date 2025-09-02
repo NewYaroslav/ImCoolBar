@@ -147,13 +147,13 @@ IMGUI_API bool ImGui::BeginCoolBar(const char* vLabel, ImCoolBarFlags vCBFlags, 
             const ImGuiID pushed_round_id = window_ptr->GetID(ICB_PREFIX "PushedRounding");
             
             
-            if (vConfig.enable_local_aa) {
+            if (vConfig.local_antialiasing) {
                 window_ptr->StateStorage.SetInt (dl_flags_id, (int)dl->Flags);
                 window_ptr->StateStorage.SetBool(dl_flags_set_id, true);
                 dl->Flags |= ImDrawListFlags_AntiAliasedFill | ImDrawListFlags_AntiAliasedLines;
 
-                if (vConfig.rounding_override >= 0.0f) {
-                    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, vConfig.rounding_override);
+                if (vConfig.frame_rounding_override >= 0.0f) {
+                    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, vConfig.frame_rounding_override);
                     window_ptr->StateStorage.SetBool(pushed_round_id, true);
                 } else {
                     window_ptr->StateStorage.SetBool(pushed_round_id, false);
@@ -164,8 +164,8 @@ IMGUI_API bool ImGui::BeginCoolBar(const char* vLabel, ImCoolBarFlags vCBFlags, 
                 window_ptr->StateStorage.SetBool(pushed_round_id, false);
             }
             
-            window_ptr->StateStorage.SetBool(window_ptr->GetID(ICB_PREFIX "PixelSnapItems"),  vConfig.pixel_snap_items);
-            window_ptr->StateStorage.SetBool(window_ptr->GetID(ICB_PREFIX "PixelSnapWindow"), vConfig.pixel_snap_window);
+            window_ptr->StateStorage.SetBool(window_ptr->GetID(ICB_PREFIX "SnapItemsToPixels"),  vConfig.snap_items_to_pixels);
+            window_ptr->StateStorage.SetBool(window_ptr->GetID(ICB_PREFIX "SnapWindowToPixels"), vConfig.snap_window_to_pixels);
         }
 
         window_ptr->StateStorage.SetVoidPtr(window_ptr->GetID(ICB_PREFIX "Type"), (void*)"ImCoolBar");
@@ -192,10 +192,10 @@ IMGUI_API bool ImGui::BeginCoolBar(const char* vLabel, ImCoolBarFlags vCBFlags, 
 
             // alpha = 1 - exp(-ln(2) * dt / HL)
             float anim_alpha = 1.0f;
-            if (vConfig.anim_ema_half_life_ms > 0.0f) {
+            if (vConfig.anim_smoothing_ms > 0.0f) {
                 const float dt_ms = ImGui::GetIO().DeltaTime * 1000.0f;
                 const float k     = 0.69314718056f; // ln(2)
-                anim_alpha = 1.0f - expf(-k * (dt_ms / vConfig.anim_ema_half_life_ms));
+                anim_alpha = 1.0f - expf(-k * (dt_ms / vConfig.anim_smoothing_ms));
                 anim_alpha = ImClamp(anim_alpha, 0.0f, 1.0f);
 
                 anim_scale += anim_alpha * (target - anim_scale);     // EMA step
@@ -208,24 +208,24 @@ IMGUI_API bool ImGui::BeginCoolBar(const char* vLabel, ImCoolBarFlags vCBFlags, 
             anim_scale = ImClamp(anim_scale, 0.0f, 1.0f);
             window_ptr->StateStorage.SetFloat(anim_scale_id, anim_scale);
 
-            window_ptr->StateStorage.SetFloat(window_ptr->GetID(ICB_PREFIX "AnimEmaHalfLifeMs"), vConfig.anim_ema_half_life_ms);
-            window_ptr->StateStorage.SetFloat(window_ptr->GetID(ICB_PREFIX "AnimEmaAlpha"),      anim_alpha);
+            window_ptr->StateStorage.SetFloat(window_ptr->GetID(ICB_PREFIX "AnimSmoothingMs"), vConfig.anim_smoothing_ms);
+            window_ptr->StateStorage.SetFloat(window_ptr->GetID(ICB_PREFIX "AnimSmoothingAlpha"),      anim_alpha);
         }
         
-        // --- Time-based EMA setup for mouse (compute per-frame alpha) ------------------------------------
+        // --- Time-based smoothing setup for mouse (compute per-frame alpha, EMA) ------------------------
         {
-            const ImGuiID ema_hl_id   = window_ptr->GetID(ICB_PREFIX "MouseEmaHalfLifeMs");
-            const ImGuiID ema_alpha_id= window_ptr->GetID(ICB_PREFIX "MouseEmaAlpha");
-            const ImGuiID ema_init_id = window_ptr->GetID(ICB_PREFIX "MouseEmaInit");
+            const ImGuiID ema_hl_id    = window_ptr->GetID(ICB_PREFIX "MouseSmoothingMs");
+            const ImGuiID ema_alpha_id = window_ptr->GetID(ICB_PREFIX "MouseSmoothingAlpha");
+            const ImGuiID ema_init_id  = window_ptr->GetID(ICB_PREFIX "MouseSmoothingInit");
 
-            window_ptr->StateStorage.SetFloat(ema_hl_id, vConfig.mouse_ema_half_life_ms);
+            window_ptr->StateStorage.SetFloat(ema_hl_id, vConfig.mouse_smoothing_ms);
 
             float alpha = 1.0f; // disabled by default -> pass-through
-            if (vConfig.mouse_ema_half_life_ms > 0.0f) {
+            if (vConfig.mouse_smoothing_ms > 0.0f) {
                 // alpha = 1 - exp(-ln(2) * dt / HL)
                 const float dt_ms = ImGui::GetIO().DeltaTime * 1000.0f;
                 const float k     = 0.69314718056f; // ln(2)
-                alpha = 1.0f - expf(-k * (dt_ms / vConfig.mouse_ema_half_life_ms));
+                alpha = 1.0f - expf(-k * (dt_ms / vConfig.mouse_smoothing_ms));
                 alpha = ImClamp(alpha, 0.0f, 1.0f);
             }
             window_ptr->StateStorage.SetFloat(ema_alpha_id, alpha);
@@ -235,11 +235,11 @@ IMGUI_API bool ImGui::BeginCoolBar(const char* vLabel, ImCoolBarFlags vCBFlags, 
         
         // --- Update filtered mouse (once per frame), independent of hover ------
         {
-            const ImGuiID ema_id      = window_ptr->GetID(ICB_PREFIX "MouseEma");
-            const ImGuiID ema_init_id = window_ptr->GetID(ICB_PREFIX "MouseEmaInit");
+            const ImGuiID ema_id      = window_ptr->GetID(ICB_PREFIX "MouseSmoothing");
+            const ImGuiID ema_init_id = window_ptr->GetID(ICB_PREFIX "MouseSmoothingInit");
             const ImGuiID last_m_id   = window_ptr->GetID(ICB_PREFIX "LastMousePos");
-            const float   alpha       = window_ptr->StateStorage.GetFloat(window_ptr->GetID(ICB_PREFIX "MouseEmaAlpha"));
-            const float   hl_ms       = window_ptr->StateStorage.GetFloat(window_ptr->GetID(ICB_PREFIX "MouseEmaHalfLifeMs"));
+            const float   alpha       = window_ptr->StateStorage.GetFloat(window_ptr->GetID(ICB_PREFIX "MouseSmoothingAlpha"));
+            const float   hl_ms       = window_ptr->StateStorage.GetFloat(window_ptr->GetID(ICB_PREFIX "MouseSmoothingMs"));
 
             float m_raw = getChannel(ImGui::GetMousePos(), vCBFlags);
             float m_flt = m_raw;
@@ -267,14 +267,14 @@ IMGUI_API bool ImGui::BeginCoolBar(const char* vLabel, ImCoolBarFlags vCBFlags, 
         }
         const ImGuiViewport* vp = window_ptr->Viewport;
         ImVec2 new_pos = vp->Pos + (vp->Size - bar_size) * vConfig.anchor;
-        if (vConfig.pixel_snap_window) {
+        if (vConfig.snap_window_to_pixels) {
             new_pos.x = ImFloor(new_pos.x);
             new_pos.y = ImFloor(new_pos.y);
         }
         ImGui::SetWindowPos(new_pos);
         
-        window_ptr->StateStorage.SetBool(window_ptr->GetID(ICB_PREFIX "PixelSnapItems"),
-                                         vConfig.pixel_snap_items);
+        window_ptr->StateStorage.SetBool(window_ptr->GetID(ICB_PREFIX "SnapItemsToPixels"),
+                                         vConfig.snap_items_to_pixels);
     }
 
     return res;
@@ -344,7 +344,7 @@ IMGUI_API bool ImGui::CoolBarItem() {
         const float anchor = window_ptr->StateStorage.GetFloat(window_ptr->GetID(ICB_PREFIX "Anchor"));
         const float bar_height = getBarSize(normal_size, hovered_size, anim_scale);
         float btn_offset = (bar_height - current_size) * anchor + wp;
-        if (window_ptr->StateStorage.GetBool(window_ptr->GetID(ICB_PREFIX "PixelSnapItems")));
+        if (window_ptr->StateStorage.GetBool(window_ptr->GetID(ICB_PREFIX "SnapItemsToPixels")));
             btn_offset = ImFloor(btn_offset);
         if (flags & ImCoolBarFlags_Horizontal) {
             ImGui::SetCursorPosY(btn_offset);
@@ -401,10 +401,10 @@ IMGUI_API void ImGui::ShowCoolBarMetrics(bool* vOpened) {
                 const auto effect_strength_id = window_ptr->GetID(ICB_PREFIX "EffectStrength");
                 const auto item_current_size_id = window_ptr->GetID(ICB_PREFIX "ItemCurrentSize");
                 const auto item_current_scale_id = window_ptr->GetID(ICB_PREFIX "ItemCurrentScale");
-                const auto ema_hl_id = window_ptr->GetID(ICB_PREFIX "MouseEmaHalfLifeMs");
-                const auto ema_alpha_id = window_ptr->GetID(ICB_PREFIX "MouseEmaAlpha");
-                const auto ema_anim_hl_id = window_ptr->GetID(ICB_PREFIX "AnimEmaHalfLifeMs");
-                const auto ema_anim_alpha_id = window_ptr->GetID(ICB_PREFIX "AnimEmaAlpha");
+                const auto ema_hl_id = window_ptr->GetID(ICB_PREFIX "MouseSmoothingMs");
+                const auto ema_alpha_id = window_ptr->GetID(ICB_PREFIX "MouseSmoothingAlpha");
+                const auto ema_anim_hl_id = window_ptr->GetID(ICB_PREFIX "AnimSmoothingMs");
+                const auto ema_anim_alpha_id = window_ptr->GetID(ICB_PREFIX "AnimSmoothingAlpha");
 
                 const auto flags = window_ptr->StateStorage.GetInt(flags_id);
                 const auto anchor = window_ptr->StateStorage.GetFloat(anchor_id);
@@ -437,10 +437,10 @@ IMGUI_API void ImGui::ShowCoolBarMetrics(bool* vOpened) {
                     SetColumnLabel("EffectStrength ", "%f", effect_strength);
                     SetColumnLabel("ItemCurrentSize ", "%f", item_current_size);
                     SetColumnLabel("ItemCurrentScale ", "%f", item_current_scale);
-                    SetColumnLabel("MouseEmaHalfLifeMs  ", "%f", window_ptr->StateStorage.GetFloat(ema_hl_id));
-                    SetColumnLabel("MouseEmaAlpha ", "%f", window_ptr->StateStorage.GetFloat(ema_alpha_id)); 
-                    SetColumnLabel("AnimEmaHalfLifeMs ", "%f", window_ptr->StateStorage.GetFloat(ema_anim_hl_id));
-                    SetColumnLabel("AnimEmaAlpha ", "%f", window_ptr->StateStorage.GetFloat(ema_anim_alpha_id));
+                    SetColumnLabel("MouseSmoothingMs  ", "%f", window_ptr->StateStorage.GetFloat(ema_hl_id));
+                    SetColumnLabel("MouseSmoothingAlpha ", "%f", window_ptr->StateStorage.GetFloat(ema_alpha_id));
+                    SetColumnLabel("AnimSmoothingMs ", "%f", window_ptr->StateStorage.GetFloat(ema_anim_hl_id));
+                    SetColumnLabel("AnimSmoothingAlpha ", "%f", window_ptr->StateStorage.GetFloat(ema_anim_alpha_id));
                     
                     ImGui::TableNextColumn();
                     ImGui::Text("%s", "Flags ");
