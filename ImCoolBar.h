@@ -38,26 +38,41 @@ enum ImCoolBarFlags_ {                     //
 };
 
 struct ImCoolBarConfig {
-    ImVec2 anchor         = ImVec2(-1.0f, -1.0f);             //
-    float normal_size     = 40.0f;                            //
-    float hovered_size    = 60.0f;                            //
-    float anim_step       = 0.15f;                            //
-    float effect_strength = 0.5f;                             //
-    float mouse_ema_half_life_ms  = 0.0f;                     // <=0 disables time-based EMA
+    ImVec2 anchor                    = ImVec2(-1.0f, -1.0f);  //
+    float normal_size                = 40.0f;                 //
+    float hovered_size               = 60.0f;                 //
+    float anim_step                  = 0.15f;                 //
+    float effect_strength            = 0.5f;                  //
+    float mouse_ema_half_life_ms     = 50.0f;                 // <=0 disables time-based EMA
+    float anim_ema_half_life_ms      = 50.0f;                 // <=0 uses step-based anim_step
+    bool pixel_snap_window           = true;                  // snap window pos to integer pixels
+    bool pixel_snap_items            = false;                 // snap inner offsets (buttons)
+	bool enable_local_aa             = true;                  // локально включить AA для бара
+    float rounding_override          = -1.0f;                 // <0 = не трогать, >=0 = PushStyleVar(FrameRounding, value)
     ImCoolBarConfig(                                          //
         const ImVec2 vAnchor         = ImVec2(-1.0f, -1.0f),  //
         const float  vNormalSize     = 40.0f,                 //
         const float  vHoveredSize    = 60.0f,                 //
         const float  vAnimStep       = 0.15f,                 //
         const float  vEffectStrength = 0.5f,                  //
-        const float  vMouseEmaHalfLifeMs = 0.0f)              //
+        const float  vMouseEmaHalfLifeMs = 50.0f,             //
+        const float  vAnimEmaHalfLifeMs = 50.0f,              //
+        const bool   vPixelSnapWindow = true,                 //
+        const bool   vPixelSnapItems = false,
+		const bool   vEnableLocalAA = true,
+		const float  vRoundingOverride = 50.0f)               //
         :                                                     //
           anchor(vAnchor),                                    //
           normal_size(vNormalSize),                           //
           hovered_size(vHoveredSize),                         //
           anim_step(vAnimStep),                               //
           effect_strength(vEffectStrength),                   //
-          mouse_ema_half_life_ms(vMouseEmaHalfLifeMs)         //
+          mouse_ema_half_life_ms(vMouseEmaHalfLifeMs),        //
+          anim_ema_half_life_ms(vAnimEmaHalfLifeMs),          //
+          pixel_snap_window(vPixelSnapWindow),                //
+          pixel_snap_items(vPixelSnapItems),
+		  enable_local_aa(vEnableLocalAA),
+		  rounding_override(vRoundingOverride)
     {
     }
 };
