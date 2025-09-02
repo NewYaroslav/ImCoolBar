@@ -40,6 +40,12 @@ It keeps the original API spirit while fixing hover glitches and adding optional
 
 * `ImCoolBarConfig` and flags may live in the global namespace to mirror Dear ImGui style (functions remain in `ImGui::`). See **Migration** below.
 
+**Result:**
+
+<p align="center">
+  <img src="docs/ImCoolBar.gif" width="640" alt="ImCoolBar demo">
+</p>
+
 ---
 
 ## Branches & versioning
