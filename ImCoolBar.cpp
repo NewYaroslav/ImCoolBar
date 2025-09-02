@@ -120,9 +120,9 @@ IMGUI_API bool ImGui::BeginCoolBar(const char* vLabel, ImCoolBarFlags vCBFlags, 
         ImGuiWindowFlags_NoCollapse |          //
         ImGuiWindowFlags_NoMove |              //
         ImGuiWindowFlags_NoSavedSettings |     //
-#ifndef ENABLE_IMCOOLBAR_DEBUG                 //
+#       ifndef ENABLE_IMCOOLBAR_DEBUG          //
         ImGuiWindowFlags_NoBackground |        //
-#endif                                         //
+#       endif                                  //
         ImGuiWindowFlags_NoFocusOnAppearing |  //
         ICB_DOCKING_HOST_FLAGS;                //
     bool res = ImGui::Begin(vLabel, nullptr, flags);
@@ -172,11 +172,9 @@ IMGUI_API bool ImGui::BeginCoolBar(const char* vLabel, ImCoolBarFlags vCBFlags, 
         window_ptr->StateStorage.SetInt(window_ptr->GetID(ICB_PREFIX "ItemIdx"), 0);
         window_ptr->StateStorage.SetInt(window_ptr->GetID(ICB_PREFIX "Flags"), vCBFlags);
 
-        {
-            const float anchor = ImClamp(getChannelInv(vConfig.anchor, vCBFlags), 0.0f, 1.0f);
-            window_ptr->StateStorage.SetFloat(window_ptr->GetID(ICB_PREFIX "Anchor"), anchor);
-        }
-        
+        const float anchor = ImClamp(getChannelInv(vConfig.anchor, vCBFlags), 0.0f, 1.0f);
+        window_ptr->StateStorage.SetFloat(window_ptr->GetID(ICB_PREFIX "Anchor"), anchor);
+
         window_ptr->StateStorage.SetFloat(window_ptr->GetID(ICB_PREFIX "NormalSize"), vConfig.normal_size);
         window_ptr->StateStorage.SetFloat(window_ptr->GetID(ICB_PREFIX "HoveredSize"), vConfig.hovered_size);
         window_ptr->StateStorage.SetFloat(window_ptr->GetID(ICB_PREFIX "EffectStrength"), vConfig.effect_strength);
@@ -214,16 +212,19 @@ IMGUI_API bool ImGui::BeginCoolBar(const char* vLabel, ImCoolBarFlags vCBFlags, 
         
         // --- Time-based smoothing setup for mouse (compute per-frame alpha, EMA) ------------------------
         {
+            ImGuiIO& io = ImGui::GetIO();
             const ImGuiID ema_hl_id    = window_ptr->GetID(ICB_PREFIX "MouseSmoothingMs");
             const ImGuiID ema_alpha_id = window_ptr->GetID(ICB_PREFIX "MouseSmoothingAlpha");
             const ImGuiID ema_init_id  = window_ptr->GetID(ICB_PREFIX "MouseSmoothingInit");
+            const ImGuiID reseed_id    = window_ptr->GetID(ICB_PREFIX "MouseReseedPending");
 
             window_ptr->StateStorage.SetFloat(ema_hl_id, vConfig.mouse_smoothing_ms);
 
             float alpha = 1.0f; // disabled by default -> pass-through
             if (vConfig.mouse_smoothing_ms > 0.0f) {
                 // alpha = 1 - exp(-ln(2) * dt / HL)
-                const float dt_ms = ImGui::GetIO().DeltaTime * 1000.0f;
+                float dt_ms = ImGui::GetIO().DeltaTime * 1000.0f;
+                dt_ms = ImMin(dt_ms, 100.0f);
                 const float k     = 0.69314718056f; // ln(2)
                 alpha = 1.0f - expf(-k * (dt_ms / vConfig.mouse_smoothing_ms));
                 alpha = ImClamp(alpha, 0.0f, 1.0f);
@@ -231,27 +232,35 @@ IMGUI_API bool ImGui::BeginCoolBar(const char* vLabel, ImCoolBarFlags vCBFlags, 
             window_ptr->StateStorage.SetFloat(ema_alpha_id, alpha);
 
             // NOTE: do NOT reset EMA on leave — we want continuity across hover boundaries.
+            if (io.AppFocusLost || !ImGui::IsMousePosValid())
+                window_ptr->StateStorage.SetBool(ema_init_id, false), window_ptr->StateStorage.SetBool(reseed_id, true);
         }
         
         // --- Update filtered mouse (once per frame), independent of hover ------
         {
             const ImGuiID ema_id      = window_ptr->GetID(ICB_PREFIX "MouseSmoothing");
             const ImGuiID ema_init_id = window_ptr->GetID(ICB_PREFIX "MouseSmoothingInit");
+            const ImGuiID reseed_id   = window_ptr->GetID(ICB_PREFIX "MouseReseedPending");
             const ImGuiID last_m_id   = window_ptr->GetID(ICB_PREFIX "LastMousePos");
             const float   alpha       = window_ptr->StateStorage.GetFloat(window_ptr->GetID(ICB_PREFIX "MouseSmoothingAlpha"));
             const float   hl_ms       = window_ptr->StateStorage.GetFloat(window_ptr->GetID(ICB_PREFIX "MouseSmoothingMs"));
 
-            float m_raw = getChannel(ImGui::GetMousePos(), vCBFlags);
-            float m_flt = m_raw;
-            if (hl_ms > 0.0f && alpha > 0.0f) {
-                if (!window_ptr->StateStorage.GetBool(ema_init_id)) {
-                    emaReset(ema_id, m_raw);                 // seed once
-                    window_ptr->StateStorage.SetBool(ema_init_id, true);
-                } else {
-                    m_flt = emaUpdate(ema_id, m_raw, alpha); // one EMA update per frame
+            if (ImGui::IsMousePosValid()) {
+                float m_raw = getChannel(ImGui::GetMousePos(), vCBFlags);
+                float m_flt = m_raw;
+                const bool need_seed = !window_ptr->StateStorage.GetBool(ema_init_id) ||
+                                        window_ptr->StateStorage.GetBool(reseed_id);
+                if (hl_ms > 0.0f && alpha > 0.0f) {
+                    if (need_seed) {
+                        emaReset(ema_id, m_raw);                 // seed once on first valid
+                        window_ptr->StateStorage.SetBool(ema_init_id, true);
+                        window_ptr->StateStorage.SetBool(reseed_id, false);
+                    } else {
+                        m_flt = emaUpdate(ema_id, m_raw, alpha); // EMA step
+                    }
                 }
+                window_ptr->StateStorage.SetFloat(last_m_id, m_flt);
             }
-            window_ptr->StateStorage.SetFloat(last_m_id, m_flt);
         }
 
         // --- Position with predicted cross-axis size for THIS frame ---
@@ -275,8 +284,8 @@ IMGUI_API bool ImGui::BeginCoolBar(const char* vLabel, ImCoolBarFlags vCBFlags, 
         
         window_ptr->StateStorage.SetBool(window_ptr->GetID(ICB_PREFIX "SnapItemsToPixels"),
                                          vConfig.snap_items_to_pixels);
-    }
 
+    }
     return res;
 }
 
@@ -344,8 +353,9 @@ IMGUI_API bool ImGui::CoolBarItem() {
         const float anchor = window_ptr->StateStorage.GetFloat(window_ptr->GetID(ICB_PREFIX "Anchor"));
         const float bar_height = getBarSize(normal_size, hovered_size, anim_scale);
         float btn_offset = (bar_height - current_size) * anchor + wp;
-        if (window_ptr->StateStorage.GetBool(window_ptr->GetID(ICB_PREFIX "SnapItemsToPixels")));
+        if (window_ptr->StateStorage.GetBool(window_ptr->GetID(ICB_PREFIX "SnapItemsToPixels"))) {
             btn_offset = ImFloor(btn_offset);
+        }
         if (flags & ImCoolBarFlags_Horizontal) {
             ImGui::SetCursorPosY(btn_offset);
         } else if (flags & ImCoolBarFlags_Vertical) {

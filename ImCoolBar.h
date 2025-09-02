@@ -50,7 +50,7 @@ struct ImCoolBarConfig {
     float mouse_smoothing_ms         = 50.0f;                 ///< EMA half-life for mouse smoothing in ms (<=0 disables).
     float anim_smoothing_ms          = 50.0f;                 ///< EMA half-life for animation smoothing in ms (<=0 uses step).
     bool snap_window_to_pixels       = true;                  ///< Snap window position to integer pixels.
-    bool snap_items_to_pixels        = false;                 ///< Snap internal item offsets to integer pixels.
+    bool snap_items_to_pixels        = true;                  ///< Snap internal item offsets to integer pixels.
     bool local_antialiasing          = true;                  ///< Enable antialiasing only for the bar.
     float frame_rounding_override    = -1.0f;                 ///< <0 keeps style, >=0 pushes FrameRounding.
     /// \brief Construct with optional parameter overrides.
@@ -74,9 +74,9 @@ struct ImCoolBarConfig {
         const float  vMouseSmoothingMs      = 50.0f,          
         const float  vAnimSmoothingMs       = 50.0f,          
         const bool   vSnapWindowToPixels    = true,           
-        const bool   vSnapItemsToPixels     = false,
+        const bool   vSnapItemsToPixels     = true,
         const bool   vLocalAntialiasing     = true,
-        const float  vFrameRoundingOverride = 50.0f)          
+        const float  vFrameRoundingOverride = -1.0f)          
         :                                                     
           anchor(vAnchor),                                    
           normal_size(vNormalSize),                           
