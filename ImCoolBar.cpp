@@ -128,8 +128,7 @@ IMGUI_API bool ImGui::BeginCoolBar(const char* vLabel, ImCoolBarFlags vCBFlags, 
     if (!res) {
         ImGui::End();
     } else {
-        // Can be Horizontal or Vertical, not both
-        // this working atm, just because we have only H or V flags
+        // Only one orientation flag (horizontal or vertical) may be active
         IM_ASSERT(                                                                    //
             ((vCBFlags & ImCoolBarFlags_Horizontal) == ImCoolBarFlags_Horizontal) ||  //
             ((vCBFlags & ImCoolBarFlags_Vertical) == ImCoolBarFlags_Vertical)         //
@@ -159,7 +158,7 @@ IMGUI_API bool ImGui::BeginCoolBar(const char* vLabel, ImCoolBarFlags vCBFlags, 
                     window_ptr->StateStorage.SetBool(pushed_round_id, false);
                 }
             } else {
-                // гарантируем, что при EndCoolBar ничего не будем восстанавливать
+                // Ensure EndCoolBar has no state to restore
                 window_ptr->StateStorage.SetBool(dl_flags_set_id, false);
                 window_ptr->StateStorage.SetBool(pushed_round_id, false);
             }
@@ -187,7 +186,7 @@ IMGUI_API bool ImGui::BeginCoolBar(const char* vLabel, ImCoolBarFlags vCBFlags, 
             const ImGuiID anim_scale_id = window_ptr->GetID(ICB_PREFIX "AnimScale");
             anim_scale = window_ptr->StateStorage.GetFloat(anim_scale_id); // prev value (0 by default)
 
-            const bool  hovered_now = isWindowHovered(window_ptr); // уже есть выше, если есть — убери дубликат
+            const bool  hovered_now = isWindowHovered(window_ptr);
             const float target      = hovered_now ? 1.0f : 0.0f;
 
             // alpha = 1 - exp(-ln(2) * dt / HL)

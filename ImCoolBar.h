@@ -30,48 +30,63 @@ SOFTWARE.
 #define IMCOOLBAR_HAS_DOCKING
 #endif
 
-typedef int ImCoolBarFlags;                //
-enum ImCoolBarFlags_ {                     //
-    ImCoolBarFlags_None       = 0,         //
-    ImCoolBarFlags_Vertical   = (1 << 0),  //
-    ImCoolBarFlags_Horizontal = (1 << 1),  //
+/// \brief Configuration flags for \c ImCoolBar.
+/// \note Only one orientation flag should be specified at a time.
+typedef int ImCoolBarFlags;                ///< Alias for bitfield flags.
+enum ImCoolBarFlags_ {
+    ImCoolBarFlags_None       = 0,         ///< No flags.
+    ImCoolBarFlags_Vertical   = (1 << 0),  ///< Arrange items vertically.
+    ImCoolBarFlags_Horizontal = (1 << 1),  ///< Arrange items horizontally.
 };
 
+/// \brief Configuration parameters for \c ImCoolBar.
 struct ImCoolBarConfig {
-    ImVec2 anchor                    = ImVec2(-1.0f, -1.0f);  //
-    float normal_size                = 40.0f;                 //
-    float hovered_size               = 60.0f;                 //
-    float anim_step                  = 0.15f;                 //
-    float effect_strength            = 0.5f;                  //
-    float mouse_smoothing_ms         = 50.0f;                 // <=0 disables time-based smoothing (EMA half-life)
-    float anim_smoothing_ms          = 50.0f;                 // <=0 uses step-based anim_step (EMA half-life)
-    bool snap_window_to_pixels       = true;                  // snap window pos to integer pixels
-    bool snap_items_to_pixels        = false;                 // snap inner offsets (buttons)
-    bool local_antialiasing          = true;                  // локально включить AA для бара
-    float frame_rounding_override    = -1.0f;                 // <0 = не трогать, >=0 = PushStyleVar(FrameRounding, value)
-    ImCoolBarConfig(                                          //
-        const ImVec2 vAnchor         = ImVec2(-1.0f, -1.0f),  //
-        const float  vNormalSize     = 40.0f,                 //
-        const float  vHoveredSize    = 60.0f,                 //
-        const float  vAnimStep       = 0.15f,                 //
-        const float  vEffectStrength = 0.5f,                  //
-        const float  vMouseSmoothingMs      = 50.0f,          //
-        const float  vAnimSmoothingMs       = 50.0f,          //
-        const bool   vSnapWindowToPixels    = true,           //
+    ImVec2 anchor                    = ImVec2(-1.0f, -1.0f);  ///< Anchor within the viewport [0..1].
+    float normal_size                = 40.0f;                 ///< Default item size in pixels.
+    float hovered_size               = 60.0f;                 ///< Item size when fully hovered (px).
+    float anim_step                  = 0.15f;                 ///< Step for animation when smoothing is disabled.
+    float effect_strength            = 0.5f;                  ///< Strength of the hover bubble effect [0..1].
+    float mouse_smoothing_ms         = 50.0f;                 ///< EMA half-life for mouse smoothing in ms (<=0 disables).
+    float anim_smoothing_ms          = 50.0f;                 ///< EMA half-life for animation smoothing in ms (<=0 uses step).
+    bool snap_window_to_pixels       = true;                  ///< Snap window position to integer pixels.
+    bool snap_items_to_pixels        = false;                 ///< Snap internal item offsets to integer pixels.
+    bool local_antialiasing          = true;                  ///< Enable antialiasing only for the bar.
+    float frame_rounding_override    = -1.0f;                 ///< <0 keeps style, >=0 pushes FrameRounding.
+    /// \brief Construct with optional parameter overrides.
+    /// \param vAnchor Anchor within the viewport [0..1].
+    /// \param vNormalSize Normal item size in pixels.
+    /// \param vHoveredSize Hovered item size in pixels.
+    /// \param vAnimStep Animation step when smoothing is disabled.
+    /// \param vEffectStrength Bubble effect strength [0..1].
+    /// \param vMouseSmoothingMs Mouse smoothing half-life in ms.
+    /// \param vAnimSmoothingMs Animation smoothing half-life in ms.
+    /// \param vSnapWindowToPixels Snap window position to integer pixels.
+    /// \param vSnapItemsToPixels Snap item offsets to integer pixels.
+    /// \param vLocalAntialiasing Enable antialiasing for the bar only.
+    /// \param vFrameRoundingOverride <0 keeps style, >=0 pushes FrameRounding.
+    ImCoolBarConfig(                                          
+        const ImVec2 vAnchor         = ImVec2(-1.0f, -1.0f),  
+        const float  vNormalSize     = 40.0f,                 
+        const float  vHoveredSize    = 60.0f,                 
+        const float  vAnimStep       = 0.15f,                 
+        const float  vEffectStrength = 0.5f,                  
+        const float  vMouseSmoothingMs      = 50.0f,          
+        const float  vAnimSmoothingMs       = 50.0f,          
+        const bool   vSnapWindowToPixels    = true,           
         const bool   vSnapItemsToPixels     = false,
         const bool   vLocalAntialiasing     = true,
-        const float  vFrameRoundingOverride = 50.0f)          //
-        :                                                     //
-          anchor(vAnchor),                                    //
-          normal_size(vNormalSize),                           //
-          hovered_size(vHoveredSize),                         //
-          anim_step(vAnimStep),                               //
-          effect_strength(vEffectStrength),                   //
-          mouse_smoothing_ms(vMouseSmoothingMs),              //
-          anim_smoothing_ms(vAnimSmoothingMs),                //
-          snap_window_to_pixels(vSnapWindowToPixels),         //
+        const float  vFrameRoundingOverride = 50.0f)          
+        :                                                     
+          anchor(vAnchor),                                    
+          normal_size(vNormalSize),                           
+          hovered_size(vHoveredSize),                         
+          anim_step(vAnimStep),                               
+          effect_strength(vEffectStrength),                   
+          mouse_smoothing_ms(vMouseSmoothingMs),              
+          anim_smoothing_ms(vAnimSmoothingMs),                
+          snap_window_to_pixels(vSnapWindowToPixels),         
           snap_items_to_pixels(vSnapItemsToPixels),
-          local_antialiasing(vLocalAntialiasing),             //
+          local_antialiasing(vLocalAntialiasing),             
           frame_rounding_override(vFrameRoundingOverride)
     {
     }
@@ -79,11 +94,40 @@ struct ImCoolBarConfig {
 
 namespace ImGui {
 
+/// \brief Begin a CoolBar container.
+/// \param vLabel Window label.
+/// \param vCBFlags Orientation flags.
+/// \param vConfig Configuration settings.
+/// \param vFlags Additional ImGui window flags.
+/// \return \c true if the bar is visible.
+/// \note Only left-to-right layouts are supported.
+/// \code
+/// ImCoolBarConfig cfg;
+/// if (ImGui::BeginCoolBar("Main", ImCoolBarFlags_Horizontal, cfg)) {
+///     if (ImGui::CoolBarItem())
+///         ImGui::Button("Item");
+///     ImGui::EndCoolBar();
+/// }
+/// \endcode
 IMGUI_API bool BeginCoolBar(const char* vLabel, ImCoolBarFlags vCBFlags = ImCoolBarFlags_Vertical, const ImCoolBarConfig& vConfig = {}, ImGuiWindowFlags vFlags = ImGuiWindowFlags_None);
+
+/// \brief Close the current CoolBar container.
 IMGUI_API void EndCoolBar();
+
+/// \brief Declare an item inside the current CoolBar.
+/// \return \c true when the item can be rendered.
 IMGUI_API bool CoolBarItem();
+
+/// \brief Get the width of the last CoolBar item in pixels.
+/// \return Item size along the bar's main axis.
 IMGUI_API float GetCoolBarItemWidth();
+
+/// \brief Get the scale of the last CoolBar item relative to its normal size.
+/// \return Scale factor where 1.0 is the normal size.
 IMGUI_API float GetCoolBarItemScale();
+
+/// \brief Show a debug window with internal CoolBar metrics.
+/// \param vOpened Pointer to the window open state.
 IMGUI_API void ShowCoolBarMetrics(bool* vOpened);
 
 }  // namespace ImGui
