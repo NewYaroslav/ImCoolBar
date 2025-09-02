@@ -166,7 +166,7 @@ IMGUI_API bool ImGui::BeginCoolBar(const char* vLabel, ImCoolBarFlags vCBFlags, 
         anim_scale = ImClamp(anim_scale, 0.0f, 1.0f);
         window_ptr->StateStorage.SetFloat(anim_scale_id, anim_scale);
         
-         // --- Time-based EMA setup for mouse ------------------------------------
+         // --- Time-based EMA setup for mouse (compute per-frame alpha) ------------------------------------
         {
             const ImGuiID ema_hl_id   = window_ptr->GetID(ICB_PREFIX "MouseEmaHalfLifeMs");
             const ImGuiID ema_alpha_id= window_ptr->GetID(ICB_PREFIX "MouseEmaAlpha");
@@ -184,9 +184,28 @@ IMGUI_API bool ImGui::BeginCoolBar(const char* vLabel, ImCoolBarFlags vCBFlags, 
             }
             window_ptr->StateStorage.SetFloat(ema_alpha_id, alpha);
 
-            // Drop EMA seed when cursor leaves -> no stale lag on next enter
-            if (!hovered_now)
-                window_ptr->StateStorage.SetBool(ema_init_id, false);
+            // NOTE: do NOT reset EMA on leave — we want continuity across hover boundaries.
+        }
+        
+        // --- Update filtered mouse (once per frame), independent of hover ------
+        {
+            const ImGuiID ema_id      = window_ptr->GetID(ICB_PREFIX "MouseEma");
+            const ImGuiID ema_init_id = window_ptr->GetID(ICB_PREFIX "MouseEmaInit");
+            const ImGuiID last_m_id   = window_ptr->GetID(ICB_PREFIX "LastMousePos");
+            const float   alpha       = window_ptr->StateStorage.GetFloat(window_ptr->GetID(ICB_PREFIX "MouseEmaAlpha"));
+            const float   hl_ms       = window_ptr->StateStorage.GetFloat(window_ptr->GetID(ICB_PREFIX "MouseEmaHalfLifeMs"));
+
+            float m_raw = getChannel(ImGui::GetMousePos(), vCBFlags);
+            float m_flt = m_raw;
+            if (hl_ms > 0.0f && alpha > 0.0f) {
+                if (!window_ptr->StateStorage.GetBool(ema_init_id)) {
+                    emaReset(ema_id, m_raw);                 // seed once
+                    window_ptr->StateStorage.SetBool(ema_init_id, true);
+                } else {
+                    m_flt = emaUpdate(ema_id, m_raw, alpha); // one EMA update per frame
+                }
+            }
+            window_ptr->StateStorage.SetFloat(last_m_id, m_flt);
         }
         
         // --- Position with predicted cross-axis size for THIS frame ---
@@ -240,8 +259,8 @@ IMGUI_API bool ImGui::CoolBarItem() {
     }
 
     float current_size = normal_size;
-    ImGuiContext& g = *GImGui;
 
+    /*
     if (isWindowHovered(window_ptr)) {
         float m = getChannel(ImGui::GetMousePos(), flags);
 
@@ -261,6 +280,12 @@ IMGUI_API bool ImGui::CoolBarItem() {
         }
         last_mouse_pos = m;
     }
+    */
+    
+    ImGuiContext& g = *GImGui;
+    
+    // Read filtered mouse, already updated once in BeginCoolBar()
+    last_mouse_pos = window_ptr->StateStorage.GetFloat(window_ptr->GetID(ICB_PREFIX "LastMousePos"));
     
     if (current_item_size <= 0.0f) current_item_size = normal_size;
 
@@ -363,7 +388,7 @@ IMGUI_API void ImGui::ShowCoolBarMetrics(bool* vOpened) {
                     SetColumnLabel("EffectStrength ", "%f", effect_strength);
                     SetColumnLabel("ItemCurrentSize ", "%f", item_current_size);
                     SetColumnLabel("ItemCurrentScale ", "%f", item_current_scale);
-                    SetColumnLabel("MouseEmaHalfLifeMs  ", "%f", window_ptr->StateStorage.GetInt(ema_hl_id));
+                    SetColumnLabel("MouseEmaHalfLifeMs  ", "%f", window_ptr->StateStorage.GetFloat(ema_hl_id));
                     SetColumnLabel("MouseEmaAlpha ", "%f", window_ptr->StateStorage.GetFloat(ema_alpha_id)); 
 
                     ImGui::TableNextColumn();
