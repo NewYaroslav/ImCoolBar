@@ -80,13 +80,13 @@ auto coolbar_button = [](const char* label) -> bool {
 };
 
 ImCoolBarConfig cfg;                     // defaults (50 ms smoothing, AA & pixel snapping on)
-cfg.anchor                 = ImVec2(0.5f, 1.0f); // bottom-center of the viewport
-cfg.mouse_smoothing_ms     = 120.0f;           // time-based mouse smoothing (0 = off)
-cfg.anim_smoothing_ms      = 120.0f;           // time-based anim smoothing (0 = step mode)
-cfg.local_antialiasing     = true;             // local AA just for this bar (default true)
-cfg.frame_rounding_override = 6.0f;            // optional per-bar rounding
-cfg.snap_window_to_pixels  = true;             // snap window to whole pixels (default)
-cfg.snap_items_to_pixels   = false;            // allow subpixel item offsets
+cfg.anchor                  = ImVec2(0.5f, 1.0f); // bottom-center of the viewport
+cfg.mouse_smoothing_ms      = 120.0f;           // time-based mouse smoothing (default 50, 0 = off)
+cfg.anim_smoothing_ms       = 120.0f;           // time-based anim smoothing (default 50, 0 = step mode)
+cfg.local_antialiasing      = true;             // local AA just for this bar (default true)
+cfg.frame_rounding_override = 6.0f;             // optional per-bar rounding
+cfg.snap_window_to_pixels   = true;             // snap window to whole pixels (default true)
+cfg.snap_items_to_pixels    = true;             // snap inner item offsets to whole pixels (default true)
 
 if (ImGui::BeginCoolBar("##CoolBarMain", ImCoolBarFlags_Horizontal, cfg)) {
     const char* labels = "ABCDEFGHIJKL";
@@ -112,6 +112,8 @@ common.mouse_smoothing_ms      = 100.0f;
 common.anim_smoothing_ms       = 120.0f;
 common.local_antialiasing      = true;      // default true
 common.frame_rounding_override = 6.0f;
+common.snap_window_to_pixels   = true;      // default true
+common.snap_items_to_pixels    = true;      // default true
 
 // Bottom horizontal bar
 {
