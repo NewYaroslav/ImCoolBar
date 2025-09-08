@@ -1,7 +1,7 @@
 # ImCoolBar
 
 This repository is a fork of the original [aiekick/ImCoolBar](https://github.com/aiekick/ImCoolBar).
-It keeps the original API spirit while fixing hover glitches and adding optional smoothing and antialiasing controls.
+It keeps the original API spirit while fixing hover glitches and enabling smoothing and antialiasing by default (configurable).
 
 ---
 
@@ -19,22 +19,23 @@ It keeps the original API spirit while fixing hover glitches and adding optional
 
 **Smoothing (time‑based EMA)**
 
+* Enabled by default with a 50 ms half‑life; set to `0` to disable.
 * Mouse coordinate filtering with half‑life in milliseconds; frame‑rate invariant.
 * `anim_scale` smoothing to targets 0/1 with its own half‑life; fallback to the old step‑based `anim_step` when disabled.
 
-**Antialiasing (optional)**
+**Antialiasing (on by default)**
 
-* Local AA for this bar’s draw list (`AntiAliasedFill|Lines`) can be enabled via config.
+* Local AA for this bar’s draw list (`AntiAliasedFill|Lines`) is enabled by default but can be disabled via config.
 * Optional local `FrameRounding` override for smoother visuals.
 * Draw‑list flags and style are restored in `EndCoolBar()`.
 
 **Pixel snapping (optional)**
 
-* Separate snapping controls for window position and inner item offsets to avoid visible “stepping”.
+* Separate snapping controls for window position and inner item offsets to avoid visible “stepping” (both enabled by default).
 
 **Metrics**
 
-* Extra debug outputs: `MouseEmaHalfLifeMs`, `MouseEmaAlpha`, `AnimEmaHalfLifeMs`, `AnimEmaAlpha`, current `AnimScale`, per‑item sizes.
+* Extra debug outputs: `MouseSmoothingMs`, `MouseSmoothingAlpha`, `AnimSmoothingMs`, `AnimSmoothingAlpha`, current `AnimScale`, per‑item sizes.
 
 **(If applicable) Minor API refactor**
 
@@ -78,14 +79,14 @@ auto coolbar_button = [](const char* label) -> bool {
     return ImGui::Button(label, ImVec2(w, w));
 };
 
-ImCoolBarConfig cfg;                     // defaults
-cfg.anchor = ImVec2(0.5f, 1.0f);         // bottom-center of the viewport
-cfg.mouse_ema_half_life_ms = 120.0f;     // time-based mouse smoothing (0 = off)
-cfg.anim_ema_half_life_ms  = 120.0f;     // time-based anim smoothing (0 = step mode)
-cfg.enable_local_aa        = true;       // local AA just for this bar
-cfg.rounding_override      = 6.0f;       // optional per-bar rounding
-cfg.pixel_snap_window      = true;       // snap window to whole pixels (for crisp text)
-cfg.pixel_snap_items       = false;      // allow subpixel item offsets
+ImCoolBarConfig cfg;                     // defaults (50 ms smoothing, AA & pixel snapping on)
+cfg.anchor                  = ImVec2(0.5f, 1.0f); // bottom-center of the viewport
+cfg.mouse_smoothing_ms      = 120.0f;           // time-based mouse smoothing (default 50, 0 = off)
+cfg.anim_smoothing_ms       = 120.0f;           // time-based anim smoothing (default 50, 0 = step mode)
+cfg.local_antialiasing      = true;             // local AA just for this bar (default true)
+cfg.frame_rounding_override = 6.0f;             // optional per-bar rounding
+cfg.snap_window_to_pixels   = true;             // snap window to whole pixels (default true)
+cfg.snap_items_to_pixels    = true;             // snap inner item offsets to whole pixels (default true)
 
 if (ImGui::BeginCoolBar("##CoolBarMain", ImCoolBarFlags_Horizontal, cfg)) {
     const char* labels = "ABCDEFGHIJKL";
@@ -106,11 +107,13 @@ if (ImGui::BeginCoolBar("##CoolBarMain", ImCoolBarFlags_Horizontal, cfg)) {
 
 ```cpp
 // Shared smoothing/visuals
-ImCoolBarConfig common;
-common.mouse_ema_half_life_ms = 100.0f;
-common.anim_ema_half_life_ms  = 120.0f;
-common.enable_local_aa        = true;
-common.rounding_override      = 6.0f;
+ImCoolBarConfig common;                     // defaults (50 ms smoothing, AA & pixel snapping on)
+common.mouse_smoothing_ms      = 100.0f;
+common.anim_smoothing_ms       = 120.0f;
+common.local_antialiasing      = true;      // default true
+common.frame_rounding_override = 6.0f;
+common.snap_window_to_pixels   = true;      // default true
+common.snap_items_to_pixels    = true;      // default true
 
 // Bottom horizontal bar
 {
@@ -167,15 +170,16 @@ IMGUI_API void  ShowCoolBarMetrics(bool* opened);
 | `hovered_size`           | `float`  |    `60.0` | Max size when fully hovered.                                         |
 | `anim_step`              | `float`  |    `0.15` | Legacy step per frame for `anim_scale` (used when EMA disabled).     |
 | `effect_strength`        | `float`  |     `0.5` | Strength parameter for hover influence curve.                        |
-| `mouse_ema_half_life_ms` | `float`  |     `0.0` | EMA half‑life for mouse filtering; `<=0` disables.                   |
-| `anim_ema_half_life_ms`  | `float`  |     `0.0` | EMA half‑life for `anim_scale`; `<=0` uses `anim_step`.              |
-| `enable_local_aa`        | `bool`   |   `false` | Enable AA on this bar’s draw list only.                              |
-| `rounding_override`      | `float`  |    `-1.0` | `<0` keep global; `>=0` push per‑bar `FrameRounding`.                |
-| `pixel_snap_window`      | `bool`   |    `true` | Snap window position to whole pixels (crisp text).                   |
-| `pixel_snap_items`       | `bool`   |   `false` | Snap inner item offsets; turn **off** for subpixel smoothness.       |
+| `mouse_smoothing_ms` | `float`  |    `50.0` | EMA half‑life for mouse filtering; `<=0` disables.                   |
+| `anim_smoothing_ms`  | `float`  |    `50.0` | EMA half‑life for `anim_scale`; `<=0` uses `anim_step`.              |
+| `local_antialiasing`        | `bool`   |    `true` | Enable AA on this bar’s draw list only (default on).                 |
+| `frame_rounding_override`      | `float`  |    `-1.0` | `<0` keep global; `>=0` push per‑bar `FrameRounding`.                |
+| `snap_window_to_pixels`      | `bool`   |    `true` | Snap window position to whole pixels (crisp text).                   |
+| `snap_items_to_pixels`       | `bool`   |    `true` | Snap inner item offsets; turn **off** for subpixel smoothness.       |
 
 **Notes**
 
+* Mouse/anim smoothing (50 ms half‑life) and local antialiasing are enabled by default; set smoothing to `0` or antialiasing to `false` to disable.
 * EMA alpha per frame: `α = 1 - exp(-ln(2) * dt_ms / half_life_ms)`.
 * Subpixel movement is visually smoother with AA and non‑zero rounding.
 
