@@ -34,7 +34,7 @@ It keeps the original API spirit while fixing hover glitches and adding optional
 
 **Metrics**
 
-* Extra debug outputs: `MouseEmaHalfLifeMs`, `MouseEmaAlpha`, `AnimEmaHalfLifeMs`, `AnimEmaAlpha`, current `AnimScale`, per‑item sizes.
+* Extra debug outputs: `MouseSmoothingMs`, `MouseSmoothingAlpha`, `AnimSmoothingMs`, `AnimSmoothingAlpha`, current `AnimScale`, per‑item sizes.
 
 **(If applicable) Minor API refactor**
 
@@ -79,13 +79,13 @@ auto coolbar_button = [](const char* label) -> bool {
 };
 
 ImCoolBarConfig cfg;                     // defaults
-cfg.anchor = ImVec2(0.5f, 1.0f);         // bottom-center of the viewport
-cfg.mouse_ema_half_life_ms = 120.0f;     // time-based mouse smoothing (0 = off)
-cfg.anim_ema_half_life_ms  = 120.0f;     // time-based anim smoothing (0 = step mode)
-cfg.enable_local_aa        = true;       // local AA just for this bar
-cfg.rounding_override      = 6.0f;       // optional per-bar rounding
-cfg.pixel_snap_window      = true;       // snap window to whole pixels (for crisp text)
-cfg.pixel_snap_items       = false;      // allow subpixel item offsets
+cfg.anchor                 = ImVec2(0.5f, 1.0f); // bottom-center of the viewport
+cfg.mouse_smoothing_ms     = 120.0f;           // time-based mouse smoothing (0 = off)
+cfg.anim_smoothing_ms      = 120.0f;           // time-based anim smoothing (0 = step mode)
+cfg.local_antialiasing     = true;             // local AA just for this bar
+cfg.frame_rounding_override = 6.0f;            // optional per-bar rounding
+cfg.snap_window_to_pixels  = true;             // snap window to whole pixels (for crisp text)
+cfg.snap_items_to_pixels   = false;            // allow subpixel item offsets
 
 if (ImGui::BeginCoolBar("##CoolBarMain", ImCoolBarFlags_Horizontal, cfg)) {
     const char* labels = "ABCDEFGHIJKL";
@@ -107,10 +107,10 @@ if (ImGui::BeginCoolBar("##CoolBarMain", ImCoolBarFlags_Horizontal, cfg)) {
 ```cpp
 // Shared smoothing/visuals
 ImCoolBarConfig common;
-common.mouse_ema_half_life_ms = 100.0f;
-common.anim_ema_half_life_ms  = 120.0f;
-common.enable_local_aa        = true;
-common.rounding_override      = 6.0f;
+common.mouse_smoothing_ms      = 100.0f;
+common.anim_smoothing_ms       = 120.0f;
+common.local_antialiasing      = true;
+common.frame_rounding_override = 6.0f;
 
 // Bottom horizontal bar
 {
@@ -167,12 +167,12 @@ IMGUI_API void  ShowCoolBarMetrics(bool* opened);
 | `hovered_size`           | `float`  |    `60.0` | Max size when fully hovered.                                         |
 | `anim_step`              | `float`  |    `0.15` | Legacy step per frame for `anim_scale` (used when EMA disabled).     |
 | `effect_strength`        | `float`  |     `0.5` | Strength parameter for hover influence curve.                        |
-| `mouse_ema_half_life_ms` | `float`  |     `0.0` | EMA half‑life for mouse filtering; `<=0` disables.                   |
-| `anim_ema_half_life_ms`  | `float`  |     `0.0` | EMA half‑life for `anim_scale`; `<=0` uses `anim_step`.              |
-| `enable_local_aa`        | `bool`   |   `false` | Enable AA on this bar’s draw list only.                              |
-| `rounding_override`      | `float`  |    `-1.0` | `<0` keep global; `>=0` push per‑bar `FrameRounding`.                |
-| `pixel_snap_window`      | `bool`   |    `true` | Snap window position to whole pixels (crisp text).                   |
-| `pixel_snap_items`       | `bool`   |   `false` | Snap inner item offsets; turn **off** for subpixel smoothness.       |
+| `mouse_smoothing_ms` | `float`  |     `0.0` | EMA half‑life for mouse filtering; `<=0` disables.                   |
+| `anim_smoothing_ms`  | `float`  |     `0.0` | EMA half‑life for `anim_scale`; `<=0` uses `anim_step`.              |
+| `local_antialiasing`        | `bool`   |   `false` | Enable AA on this bar’s draw list only.                              |
+| `frame_rounding_override`      | `float`  |    `-1.0` | `<0` keep global; `>=0` push per‑bar `FrameRounding`.                |
+| `snap_window_to_pixels`      | `bool`   |    `true` | Snap window position to whole pixels (crisp text).                   |
+| `snap_items_to_pixels`       | `bool`   |   `false` | Snap inner item offsets; turn **off** for subpixel smoothness.       |
 
 **Notes**
 
